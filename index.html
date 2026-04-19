@@ -826,7 +826,7 @@ body::after {
 
 <script type="module">
 // ─────────────────────────────────────
-// 🔥 FIREBASE CONFIG — 貼你的設定在這裡
+// 🔥 FIREBASE CONFIG — 變數名稱統一為 firebaseConfig
 // ─────────────────────────────────────
 const firebaseConfig = {
     apiKey: "AIzaSyAwTAY-XJFW4qM85sjtiiUwNePA3WdgMd0",
@@ -839,9 +839,6 @@ const firebaseConfig = {
     measurementId: "G-CYFJNCKR1N"
 };
 
-// ─────────────────────────────────────
-// 題目資料 — 修改答案在這裡
-// ─────────────────────────────────────
 const QUESTIONS = [
   { audio: "維骨力",   answer: "認明原場吃對才有效", hint: "🎧 品牌廣告" },
   { audio: "馬爾濟斯", answer: "可爾必思是喝的",     hint: "🎧 品牌廣告" },
@@ -851,47 +848,37 @@ const QUESTIONS = [
 ];
 
 // ─────────────────────────────────────
-// MATRIX RAIN
+// MATRIX RAIN (保持不變)
 // ─────────────────────────────────────
 (function() {
   const canvas = document.getElementById('matrix-canvas');
   const ctx = canvas.getContext('2d');
-  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ中文怪物廣告挑戰';
-
+  const chars = '電影醋桌鴕鱗攀嗅鈣墨毯驟鋁穗窄愣鏽韌蛹殼樁饒撬韁礫憋燼蕊鑰瓣豁贅鑲鏽顱糯鐮蹦嚼嚷瀚齲瓤癮疊矗髒霾鸞鬱牆芬蹲渴瑞鋁樁醬嚼嗅瓣鱗窄憋鏽韁燼豁贅鑲顱糯鐮蹦嚼嚷瀚齲瓤癮疊矗髒霾鸞鬱攀鈣墨毯驟鋁穗窄愣鏽韌蛹殼樁饒撬韁礫憋燼蕊鑰';
   let cols, drops;
-
   function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     const fontSize = window.innerWidth < 480 ? 12 : 14;
     ctx.font = fontSize + 'px Share Tech Mono, monospace';
     cols = Math.floor(canvas.width / fontSize);
     drops = new Array(cols).fill(1);
   }
-
   function draw() {
-    ctx.fillStyle = 'rgba(0,10,0,0.05)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(0,10,0,0.05)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     const fontSize = window.innerWidth < 480 ? 12 : 14;
     ctx.font = fontSize + 'px Share Tech Mono, monospace';
-
     for (let i = 0; i < drops.length; i++) {
       const char = chars[Math.floor(Math.random() * chars.length)];
-      const bright = drops[i] * fontSize < 30 ? '#ffffff' : '#00ff41';
-      ctx.fillStyle = bright;
+      ctx.fillStyle = drops[i] * fontSize < 30 ? '#ffffff' : '#00ff41';
       ctx.fillText(char, i * fontSize, drops[i] * fontSize);
       if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
       drops[i]++;
     }
   }
-
-  resize();
-  window.addEventListener('resize', resize);
-  setInterval(draw, 40);
+  resize(); window.addEventListener('resize', resize); setInterval(draw, 40);
 })();
 
 // ─────────────────────────────────────
-// STATE
+// STATE & CORE
 // ─────────────────────────────────────
 let db = null;
 let currentMode = 'front';
@@ -903,14 +890,13 @@ let adminUnlocked = false;
 let lockInput = '';
 const ADMIN_PASSWORD = '0123';
 
-// ─────────────────────────────────────
-// 🔥 FIREBASE
-// ─────────────────────────────────────
 async function initFirebase() {
   try {
     const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
     const { getDatabase, ref, set, onValue, update } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
-    const app = initializeApp(FIREBASE_CONFIG);
+    
+    // 重點：這裡必須使用上面的 firebaseConfig 變數
+    const app = initializeApp(firebaseConfig); 
     db = getDatabase(app);
     window._fb = { ref, set, onValue, update, db };
 
@@ -925,25 +911,16 @@ async function initFirebase() {
       players = snap.val() || {};
       if (currentMode === 'admin') refreshAdmin();
     });
-
     setStatus('🔥 FIREBASE ONLINE', 'var(--green)');
   } catch(e) {
-    console.warn('Firebase not configured, local mode', e);
-    setStatus('⚡ LOCAL MODE', 'var(--yellow)');
-    setInterval(() => {
-      if (currentMode === 'admin') refreshAdmin();
-      if (currentMode === 'front' && playerName && frontCurrentQ !== adminCurrentQ) {
-        if (players[playerName]?.answers?.[frontCurrentQ]?.submitted) {
-          frontCurrentQ = adminCurrentQ; showFrontQuestion();
-        }
-      }
-    }, 1000);
+    console.error('Firebase 錯誤:', e);
+    setStatus('⚡ LOCAL MODE (ERROR)', 'var(--red)');
   }
 }
 
 function setStatus(txt, col) {
   const el = document.getElementById('fb-status');
-  el.textContent = txt; el.style.color = col;
+  if(el) { el.textContent = txt; el.style.color = col; }
 }
 
 async function fbSetGame(data) {
@@ -955,7 +932,7 @@ async function fbSetPlayer(name, data) {
 }
 
 // ─────────────────────────────────────
-// LOCK
+// LOCK & MODE SWITCH
 // ─────────────────────────────────────
 window.lockKey = d => {
   if (lockInput.length >= 4) return;
@@ -967,7 +944,7 @@ window.lockDel = () => {
   document.getElementById('lock-error').textContent = '';
 };
 function updateDots(state) {
-  for (let i=0;i<4;i++) {
+  for (let i=0; i<4; i++) {
     const d = document.getElementById(`ld-${i}`);
     d.className = 'lock-dot';
     if (state==='error') d.classList.add('error');
@@ -987,9 +964,6 @@ function checkPwd() {
   }
 }
 
-// ─────────────────────────────────────
-// MODE SWITCH
-// ─────────────────────────────────────
 window.switchMode = mode => {
   currentMode = mode;
   if (mode === 'admin' && !adminUnlocked) {
@@ -1010,13 +984,11 @@ window.switchMode = mode => {
 };
 
 // ─────────────────────────────────────
-// FRONT — NAME
+// FRONT LOGIC (包含算分)
 // ─────────────────────────────────────
-document.getElementById('player-name-input').addEventListener('keydown', e => { if(e.key==='Enter') startGame(); });
-
 window.startGame = async () => {
   const val = document.getElementById('player-name-input').value.trim();
-  if (!val) { document.getElementById('player-name-input').focus(); return; }
+  if (!val) return;
   playerName = val;
   if (!players[playerName]) {
     const np = { answers:{}, score:0, currentQ:adminCurrentQ };
@@ -1030,25 +1002,18 @@ window.startGame = async () => {
   showFrontQuestion();
 };
 
-// ─────────────────────────────────────
-// FRONT — PROGRESS
-// ─────────────────────────────────────
 function buildProgress() {
   const bar = document.getElementById('progress-bar');
   bar.innerHTML = '';
-  for (let i=0;i<QUESTIONS.length;i++) {
+  for (let i=0; i<QUESTIONS.length; i++) {
     const seg = document.createElement('div');
     seg.className = 'prog-seg';
-    const pd = players[playerName];
-    if (pd?.answers?.[i]?.submitted) seg.classList.add('done');
+    if (players[playerName]?.answers?.[i]?.submitted) seg.classList.add('done');
     if (i === frontCurrentQ) seg.classList.add('current');
     bar.appendChild(seg);
   }
 }
 
-// ─────────────────────────────────────
-// FRONT — CHAR BOXES (answer length hint)
-// ─────────────────────────────────────
 function buildCharBoxes(qIdx) {
   const answer = QUESTIONS[qIdx].answer;
   const container = document.getElementById('char-boxes');
@@ -1056,7 +1021,6 @@ function buildCharBoxes(qIdx) {
   [...answer].forEach((ch, i) => {
     const box = document.createElement('div');
     box.className = 'char-box';
-    box.dataset.idx = i;
     container.appendChild(box);
   });
   document.getElementById('char-count-display').textContent = `共 ${answer.length} 個字`;
@@ -1067,13 +1031,9 @@ function updateCharBoxes(val) {
   boxes.forEach((box, i) => {
     box.textContent = val[i] || '';
     box.style.color = val[i] ? 'var(--green)' : 'var(--green-dim)';
-    box.style.textShadow = val[i] ? '0 0 8px var(--green)' : 'none';
   });
 }
 
-// ─────────────────────────────────────
-// FRONT — SHOW QUESTION
-// ─────────────────────────────────────
 function showFrontQuestion() {
   const gs = document.getElementById('game-screen');
   const ws = document.getElementById('wait-screen');
@@ -1087,9 +1047,7 @@ function showFrontQuestion() {
     return;
   }
 
-  gs.style.display = 'flex';
-  ws.style.display = 'none';
-
+  gs.style.display = 'flex'; ws.style.display = 'none';
   const q = QUESTIONS[frontCurrentQ];
   document.getElementById('q-num-label').textContent = `Q.${String(frontCurrentQ+1).padStart(2,'0')} / 05`;
   document.getElementById('q-hint-badge').textContent = q.hint;
@@ -1101,124 +1059,78 @@ function showFrontQuestion() {
   const btn = document.getElementById('submit-btn');
   const fb  = document.getElementById('feedback-msg');
 
-  inp.value = '';
-  inp.className = 'answer-input-big';
-  fb.textContent = '';
-  fb.className = 'feedback-msg';
-
+  inp.value = ''; inp.disabled = false; btn.disabled = false;
+  inp.className = 'answer-input-big'; fb.textContent = '';
+  
   if (alreadyDone) {
     const prev = pd.answers[frontCurrentQ];
     inp.value = prev.userAnswer || '';
-    inp.disabled = true;
+    inp.disabled = true; btn.disabled = true;
     inp.classList.add(prev.allCorrect ? 'correct' : 'wrong');
-    btn.disabled = true;
-    fb.textContent = prev.allCorrect ? '✓ CORRECT — 答對了！' : '✗ WRONG — 答錯了';
+    fb.textContent = prev.allCorrect ? '✓ CORRECT' : `✗ 獲得 ${prev.charScore} 字分`;
     fb.className = 'feedback-msg ' + (prev.allCorrect ? 'ok' : 'fail');
     updateCharBoxes(inp.value);
-    if (prev.allCorrect) {
-      const ans = QUESTIONS[frontCurrentQ].answer;
-      [...ans].forEach((ch, i) => {
-        const box = document.querySelectorAll('.char-box')[i];
-        if (box) { box.textContent = ch; box.style.color = 'var(--green)'; }
-      });
-    }
   } else {
-    inp.disabled = false;
-    btn.disabled = false;
     inp.oninput = () => updateCharBoxes(inp.value);
     setTimeout(() => inp.focus(), 100);
   }
 }
 
-// ─────────────────────────────────────
-// FRONT — SUBMIT
-// ─────────────────────────────────────
 window.submitAnswer = async () => {
   const q = QUESTIONS[frontCurrentQ];
   const inp = document.getElementById('answer-input');
   const userAnswer = inp.value.trim();
   const allCorrect = userAnswer === q.answer;
 
-  inp.disabled = true;
-  inp.classList.add(allCorrect ? 'correct' : 'wrong');
-
-  const pd = players[playerName] || { answers:{}, score:0, currentQ:frontCurrentQ };
-  pd.answers = pd.answers || {};
-  pd.answers[frontCurrentQ] = { userAnswer, allCorrect, submitted:true };
-  if (allCorrect) pd.score = (pd.score||0) + 1;
-  pd.currentQ = frontCurrentQ;
-  players[playerName] = pd;
-  await fbSetPlayer(playerName, pd);
-
-  const fb = document.getElementById('feedback-msg');
-  fb.textContent = allCorrect ? '✓ CORRECT — 完全正確！' : '✗ WRONG — 繼續加油！';
-  fb.className = 'feedback-msg ' + (allCorrect ? 'ok' : 'fail');
-  document.getElementById('submit-btn').disabled = true;
-
-  if (allCorrect) {
-    const ans = q.answer;
-    [...ans].forEach((ch, i) => {
-      const box = document.querySelectorAll('.char-box')[i];
-      if (box) { box.textContent = ch; box.style.color = 'var(--green)'; box.style.textShadow = '0 0 8px var(--green)'; }
-    });
+  // 獨立算分
+  let charPoints = 0;
+  for (let i=0; i<q.answer.length; i++) {
+    if (userAnswer[i] === q.answer[i]) charPoints++;
   }
 
+  const pd = players[playerName] || { answers:{}, score:0 };
+  pd.answers[frontCurrentQ] = { userAnswer, allCorrect, submitted:true, charScore: charPoints };
+  if (allCorrect) pd.score = (pd.score||0) + 1;
+  pd.currentQ = frontCurrentQ;
+  
+  await fbSetPlayer(playerName, pd);
+  showFrontQuestion(); // 刷新狀態
+
   setTimeout(() => {
-    frontCurrentQ = adminCurrentQ;
     const allDone = QUESTIONS.every((_,i) => players[playerName]?.answers?.[i]?.submitted);
     if (allDone) {
-      document.getElementById('game-screen').innerHTML = `
-        <div style="text-align:center;animation:fadeUp 0.5s ease both;font-family:'Share Tech Mono',monospace">
-          <div style="font-size:3rem;margin-bottom:16px;filter:drop-shadow(0 0 16px #00ff41)">✦</div>
-          <div style="font-size:1.3rem;color:var(--green);letter-spacing:0.3em;text-shadow:0 0 12px var(--green);margin-bottom:10px">MISSION COMPLETE</div>
-          <div style="font-size:0.85rem;color:var(--green-dim);letter-spacing:0.2em">得分 ${players[playerName].score} / ${QUESTIONS.length}</div>
-        </div>`;
-      return;
+      document.getElementById('game-screen').innerHTML = `<div style="text-align:center;color:var(--green)"><h2>MISSION COMPLETE</h2><p>得分: ${pd.score}</p></div>`;
     }
-    showFrontQuestion();
   }, 2000);
 };
 
 // ─────────────────────────────────────
-// ADMIN NAV
+// ADMIN LOGIC
 // ─────────────────────────────────────
 window.adminNext = async () => {
   if (adminCurrentQ < QUESTIONS.length-1) {
     adminCurrentQ++;
     await fbSetGame({ currentQ: adminCurrentQ });
-    refreshAdmin();
-    if (!db && currentMode==='front' && playerName) { frontCurrentQ=adminCurrentQ; showFrontQuestion(); }
   }
 };
 window.adminPrev = async () => {
   if (adminCurrentQ > 0) {
     adminCurrentQ--;
     await fbSetGame({ currentQ: adminCurrentQ });
-    refreshAdmin();
   }
 };
 window.resetAll = async () => {
-  if (!confirm('確定要重設所有參賽者資料？')) return;
-  players={}; playerName=''; frontCurrentQ=0; adminCurrentQ=0;
+  if (!confirm('確定重設？')) return;
   if (db) {
     await window._fb.set(window._fb.ref(db,'game'), { currentQ:0 });
     await window._fb.set(window._fb.ref(db,'players'), null);
   }
-  document.getElementById('name-screen').style.display='flex';
-  document.getElementById('game-screen').style.display='none';
-  document.getElementById('wait-screen').style.display='none';
-  document.getElementById('player-name-input').value='';
-  refreshAdmin();
+  location.reload();
 };
 
-// ─────────────────────────────────────
-// ADMIN REFRESH
-// ─────────────────────────────────────
 function refreshAdmin() {
   const q = QUESTIONS[adminCurrentQ];
   document.getElementById('admin-q-indicator').textContent = `${adminCurrentQ+1}/${QUESTIONS.length}`;
-  document.getElementById('prev-btn').disabled = adminCurrentQ===0;
-  document.getElementById('next-btn').disabled = adminCurrentQ===QUESTIONS.length-1;
   document.getElementById('admin-q-display').innerHTML = `<span class="admin-blank">${q.answer}</span>`;
   document.getElementById('admin-answers-display').textContent = q.answer;
 
@@ -1230,38 +1142,21 @@ function refreshAdmin() {
       if (players[n].answers[adminCurrentQ].allCorrect) correct++;
     }
   });
-  document.getElementById('stat-total').textContent   = names.length;
+  document.getElementById('stat-total').textContent = names.length;
   document.getElementById('stat-answered').textContent = answered;
-  document.getElementById('stat-correct').textContent  = correct;
-  document.getElementById('stat-pending').textContent  = names.length - answered;
+  document.getElementById('stat-correct').textContent = correct;
 
   const tbody = document.getElementById('players-tbody');
-  if (!names.length) { tbody.innerHTML='<tr><td colspan="4" class="empty-state">NO PLAYERS CONNECTED</td></tr>'; return; }
+  if (!names.length) { tbody.innerHTML='<tr><td colspan="4" class="empty-state">NO PLAYERS</td></tr>'; return; }
 
   tbody.innerHTML = names.map(name => {
     const p = players[name];
     const qd = p?.answers?.[adminCurrentQ];
-    let ansHTML = '<span class="ans-tag ans-empty">—</span>';
-    if (qd?.submitted) {
-      const correct = qd.allCorrect;
-      ansHTML = `<span class="ans-tag ${correct?'ans-correct':'ans-wrong'}">${qd.userAnswer||'（空）'}</span>`;
-    }
-    const stHTML = !qd?.submitted
-      ? (p.currentQ===adminCurrentQ ? `<span class="status-dot dot-current"></span>答題中` : `<span class="status-dot dot-waiting"></span>等待`)
-      : `<span class="status-dot dot-done"></span>${qd.allCorrect?'✓ 正確':'✗ 作答完'}`;
-    return `<tr class="player-row">
-      <td class="player-name-cell">${name}</td>
-      <td>${ansHTML}</td>
-      <td style="font-size:0.72rem">${stHTML}</td>
-      <td class="score-cell">${p.score||0}pt</td>
-    </tr>`;
+    const ansHTML = qd?.submitted ? `<span class="ans-tag ${qd.allCorrect?'ans-correct':'ans-wrong'}">${qd.userAnswer} (${qd.charScore}分)</span>` : '<span class="ans-tag ans-empty">—</span>';
+    return `<tr><td>${name}</td><td>${ansHTML}</td><td>${qd?.submitted?'已完成':'答題中'}</td><td>${p.score}pt</td></tr>`;
   }).join('');
 }
 
-// ─────────────────────────────────────
-// INIT
-// ─────────────────────────────────────
-refreshAdmin();
 initFirebase();
 </script>
 </body>
