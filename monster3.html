@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>中文怪物 — 第三關</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #000a00;
+  --green: #00ff41;
+  --green-dim: #00aa2a;
+  --green-dark: #003310;
+  --green-glow: rgba(0,255,65,0.15);
+  --cyan: #00fff5;
+  --red: #ff003c;
+  --yellow: #ffd700;
+  --text: #c8ffc8;
+  --card-bg: rgba(0,20,0,0.85);
+  --border: rgba(0,255,65,0.3);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans TC', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── MATRIX RAIN ── */
+#matrix-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+/* ── SCANLINES overlay ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── MODE SWITCHER ── */
+#mode-switcher {
+  position: fixed;
+  top: 12px; right: 12px;
+  z-index: 9999;
+  display: flex;
+  gap: 8px;
+}
+.mode-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--green-dim);
+  color: var(--green-dim);
+  cursor: pointer;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+}
+.mode-btn.active {
+  border-color: var(--green);
+  color: var(--bg);
+  background: var(--green);
+  box-shadow: 0 0 12px var(--green), 0 0 24px rgba(0,255,65,0.4);
+}
+
+/* ── SHARED PANEL ── */
+.panel {
+  position: relative;
+  z-index: 10;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 70px 16px 40px;
+}
+
+/* ── HEADER ── */
+.hdr-level {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.4em;
+  color: var(--green-dim);
+  margin-bottom: 4px;
+}
+.hdr-title {
+  font-size: clamp(2rem, 8vw, 3.8rem);
+  font-weight: 900;
+  color: var(--green);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 20px var(--green), 0 0 40px rgba(0,255,65,0.5);
+  line-height: 1;
+}
+.hdr-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--green-dim);
+  letter-spacing: 0.3em;
+  margin-top: 4px;
+  margin-bottom: 36px;
+}
+
+/* ── GLITCH animation ── */
+@keyframes glitch {
+  0%,94%,100% { text-shadow: 0 0 20px var(--green), 0 0 40px rgba(0,255,65,0.5); transform: none; }
+  95% { text-shadow: -3px 0 var(--cyan), 3px 0 var(--red), 0 0 20px var(--green); transform: skewX(-2deg); }
+  97% { text-shadow: 3px 0 var(--cyan), -3px 0 var(--red), 0 0 20px var(--green); transform: skewX(1deg); }
+}
+.hdr-title { animation: glitch 4s ease infinite; }
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── CARD ── */
+.cyber-card {
+  width: 100%;
+  max-width: 640px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 28px 24px;
+  position: relative;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 24px rgba(0,255,65,0.08), inset 0 0 30px rgba(0,255,65,0.03);
+  animation: fadeUp 0.5s ease both;
+}
+.cyber-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  animation: scanLine 3s linear infinite;
+}
+@keyframes scanLine {
+  0%   { transform: scaleX(0) translateX(-100%); }
+  50%  { transform: scaleX(1) translateX(0); }
+  100% { transform: scaleX(0) translateX(100%); }
+}
+.cyber-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--green-dim), transparent);
+}
+
+/* corner accents */
+.card-corner {
+  position: absolute;
+  width: 12px; height: 12px;
+  border-color: var(--green);
+  border-style: solid;
+}
+.card-corner.tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+.card-corner.tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+.card-corner.bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+.card-corner.br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+/* ── NAME SCREEN ── */
+#name-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 400px;
+  animation: fadeUp 0.5s ease both;
+}
+.field-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.35em;
+  color: var(--green-dim);
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+.cyber-input {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.3rem;
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(0,255,65,0.04);
+  border: 1px solid var(--border);
+  border-bottom: 2px solid var(--green);
+  color: var(--green);
+  outline: none;
+  transition: all 0.2s;
+  caret-color: var(--green);
+}
+.cyber-input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 12px rgba(0,255,65,0.2);
+  background: rgba(0,255,65,0.06);
+}
+.cyber-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.25em;
+  padding: 13px 36px;
+  background: transparent;
+  border: 1px solid var(--green);
+  color: var(--green);
+  cursor: pointer;
+  text-transform: uppercase;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s;
+  clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+  width: 100%;
+}
+.cyber-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--green);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s;
+  z-index: -1;
+}
+.cyber-btn:hover { color: var(--bg); box-shadow: 0 0 20px rgba(0,255,65,0.4); }
+.cyber-btn:hover::before { transform: scaleX(1); }
+.cyber-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── PROGRESS ── */
+.progress-bar-wrap {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.prog-seg {
+  flex: 1;
+  height: 3px;
+  background: var(--green-dark);
+  border-radius: 1px;
+  transition: all 0.4s;
+  position: relative;
+  overflow: hidden;
+}
+.prog-seg.done { background: var(--green-dim); }
+.prog-seg.current {
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+}
+.prog-seg.current::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, white, transparent);
+  animation: shimmer 1.2s ease infinite;
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.prog-labels {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  margin-top: 6px;
+}
+.prog-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--green-dark);
+  transition: color 0.3s;
+}
+.prog-label.done { color: var(--green-dim); }
+.prog-label.current { color: var(--green); text-shadow: 0 0 6px var(--green); }
+
+/* ── QUESTION CARD ── */
+.q-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.q-num {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--green-dim);
+}
+.q-hint-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  padding: 3px 10px;
+  border: 1px solid var(--green-dark);
+  color: var(--green-dim);
+  letter-spacing: 0.1em;
+  clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+}
+
+/* ── CHAR BOXES (題目顯示) ── */
+.char-boxes-section {
+  margin-bottom: 28px;
+}
+.char-boxes-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  color: var(--green-dim);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.char-boxes-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--green-dark);
+}
+.char-boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.char-box {
+  width: 36px;
+  height: 44px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--green-dim);
+  background: rgba(0,255,65,0.03);
+  position: relative;
+  flex-shrink: 0;
+}
+.char-box::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 1px;
+  background: var(--green-dark);
+}
+.char-count-display {
+  text-align: center;
+  margin-top: 12px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--green-dim);
+  letter-spacing: 0.2em;
+}
+
+/* ── ANSWER INPUT AREA ── */
+.answer-section {
+  margin-top: 4px;
+}
+.answer-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  color: var(--green-dim);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.answer-label::before {
+  content: '▶';
+  font-size: 8px;
+  color: var(--green);
+}
+.answer-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--green-dark);
+}
+
+.answer-input-big {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: clamp(1.3rem, 4vw, 1.8rem);
+  width: 100%;
+  min-height: 72px;
+  padding: 16px 18px;
+  background: rgba(0,255,65,0.04);
+  border: 1px solid var(--green-dim);
+  border-bottom: 2px solid var(--green);
+  color: var(--green);
+  outline: none;
+  transition: all 0.2s;
+  caret-color: var(--green);
+  resize: none;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  text-align: center;
+  display: block;
+}
+.answer-input-big:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 16px rgba(0,255,65,0.15), inset 0 0 16px rgba(0,255,65,0.04);
+  background: rgba(0,255,65,0.07);
+}
+.answer-input-big::placeholder { color: rgba(0,255,65,0.2); font-size: 0.9rem; }
+.answer-input-big.correct {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(0,255,65,0.08);
+  box-shadow: 0 0 20px rgba(0,255,65,0.3);
+}
+.answer-input-big.wrong {
+  border-color: var(--red);
+  color: var(--red);
+  background: rgba(255,0,60,0.06);
+  box-shadow: 0 0 20px rgba(255,0,60,0.2);
+  animation: shakeX 0.35s ease;
+}
+@keyframes shakeX {
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-6px); }
+  40%,80% { transform: translateX(6px); }
+}
+
+/* ── SUBMIT BTN ── */
+.submit-wrap {
+  margin-top: 20px;
+  width: 100%;
+}
+
+/* ── FEEDBACK ── */
+.feedback-msg {
+  margin-top: 14px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-align: center;
+  min-height: 26px;
+  transition: all 0.3s;
+}
+.feedback-msg.ok { color: var(--green); text-shadow: 0 0 10px var(--green); }
+.feedback-msg.fail { color: var(--red); text-shadow: 0 0 10px var(--red); }
+
+/* ── WAIT SCREEN ── */
+#wait-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  animation: fadeUp 0.4s ease both;
+}
+.wait-icon {
+  font-size: 2.5rem;
+  filter: drop-shadow(0 0 12px var(--green));
+  animation: pulse 2s ease infinite;
+}
+@keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(1.08); } }
+.wait-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.1rem;
+  color: var(--green);
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 10px var(--green);
+}
+.wait-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--green-dim);
+  letter-spacing: 0.15em;
+}
+
+/* ── PLAYER GREETING ── */
+.player-greeting {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--green-dim);
+  letter-spacing: 0.2em;
+  margin-bottom: 18px;
+  text-transform: uppercase;
+}
+.player-greeting .pname {
+  color: var(--cyan);
+  text-shadow: 0 0 8px var(--cyan);
+}
+
+/* ══════════════════════════════════
+   ADMIN LOCK
+══════════════════════════════════ */
+#admin-lock {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,5,0,0.97);
+  z-index: 99999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+.lock-icon { font-size: 2.5rem; filter: drop-shadow(0 0 12px var(--green)); }
+.lock-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  color: var(--green-dim);
+  text-transform: uppercase;
+}
+.lock-dots { display: flex; gap: 16px; }
+.lock-dot {
+  width: 18px; height: 18px;
+  border: 2px solid var(--green-dark);
+  background: transparent;
+  transition: all 0.15s;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+.lock-dot.filled { background: var(--green); border-color: var(--green); box-shadow: 0 0 10px var(--green); }
+.lock-dot.error { background: var(--red); border-color: var(--red); box-shadow: 0 0 10px var(--red); animation: shakeX 0.3s ease; }
+.lock-numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.lock-key {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1.2rem;
+  width: 68px; height: 68px;
+  border: 1px solid var(--green-dark);
+  background: rgba(0,255,65,0.03);
+  color: var(--green-dim);
+  cursor: pointer;
+  transition: all 0.1s;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+}
+.lock-key:hover { border-color: var(--green); color: var(--green); background: rgba(0,255,65,0.1); box-shadow: 0 0 12px rgba(0,255,65,0.2); }
+.lock-key:active { transform: scale(0.93); }
+.lock-key.wide { grid-column: span 2; }
+.lock-key.del { color: var(--red); border-color: rgba(255,0,60,0.3); }
+.lock-error-msg { font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--red); letter-spacing: 0.2em; min-height: 18px; text-shadow: 0 0 8px var(--red); }
+
+/* ══════════════════════════════════
+   ADMIN VIEW
+══════════════════════════════════ */
+#admin-view {
+  display: none;
+  background: rgba(0,5,0,0.98);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 70px 16px 40px;
+  font-family: 'Share Tech Mono', monospace;
+  position: relative;
+  z-index: 10;
+}
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--green-dark);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.admin-title { font-size: 0.9rem; letter-spacing: 0.3em; color: var(--green); text-shadow: 0 0 10px var(--green); }
+.admin-subtitle { font-size: 0.65rem; color: #1a4a1a; margin-top: 4px; letter-spacing: 0.2em; }
+.admin-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.q-nav { display: flex; align-items: center; gap: 8px; }
+.nav-btn {
+  width: 34px; height: 34px;
+  border: 1px solid var(--green-dim);
+  background: transparent;
+  color: var(--green);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Share Tech Mono', monospace;
+  clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+}
+.nav-btn:hover { background: var(--green); color: var(--bg); box-shadow: 0 0 12px var(--green); }
+.nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+.q-indicator { font-size: 0.85rem; color: var(--green); min-width: 48px; text-align: center; text-shadow: 0 0 6px var(--green); }
+.reset-all-btn {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--red);
+  border: 1px solid rgba(255,0,60,0.4);
+  cursor: pointer;
+  letter-spacing: 0.15em;
+  transition: all 0.15s;
+  clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+}
+.reset-all-btn:hover { background: var(--red); color: white; box-shadow: 0 0 12px var(--red); }
+
+.admin-q-card {
+  background: rgba(0,20,0,0.6);
+  border: 1px solid var(--green-dark);
+  border-left: 3px solid var(--green);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  position: relative;
+}
+.admin-q-meta { font-size: 0.65rem; color: #1a4a1a; letter-spacing: 0.25em; margin-bottom: 8px; }
+.admin-q-sentence { font-family: 'Noto Sans TC', sans-serif; font-size: 1rem; color: #88ddaa; line-height: 2; }
+.admin-blank { display: inline-block; color: var(--green); border-bottom: 1px solid var(--green); padding: 0 6px; text-shadow: 0 0 6px var(--green); }
+.admin-answer-row { margin-top: 10px; font-size: 0.7rem; color: #1a4a1a; }
+.admin-answer-row span { color: var(--green); text-shadow: 0 0 6px var(--green); }
+
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+@media (max-width: 480px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+.stat-box {
+  background: rgba(0,15,0,0.8);
+  border: 1px solid var(--green-dark);
+  padding: 14px 10px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.stat-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: var(--green-dark); }
+.stat-val { font-size: 2rem; font-weight: 400; color: var(--green); line-height: 1; text-shadow: 0 0 12px var(--green); }
+.stat-label { font-size: 0.6rem; color: #1a4a1a; letter-spacing: 0.2em; margin-top: 6px; text-transform: uppercase; }
+
+.section-title { font-size: 0.65rem; letter-spacing: 0.35em; color: #1a4a1a; text-transform: uppercase; margin-bottom: 12px; }
+
+.players-table { width: 100%; border-collapse: collapse; }
+.players-table th {
+  font-size: 0.6rem; letter-spacing: 0.25em; color: #1a4a1a; text-transform: uppercase;
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--green-dark);
+}
+.players-table td { padding: 10px 10px; border-bottom: 1px solid rgba(0,30,0,0.8); font-size: 0.78rem; vertical-align: middle; }
+.player-row:hover td { background: rgba(0,255,65,0.03); }
+.player-name-cell { color: var(--cyan); font-family: 'Noto Sans TC', sans-serif; text-shadow: 0 0 6px rgba(0,255,245,0.5); }
+
+.ans-tag {
+  display: inline-block; padding: 2px 8px; font-size: 0.68rem;
+  letter-spacing: 0.05em; margin: 2px; border-radius: 1px;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+.ans-correct { background: rgba(0,255,65,0.12); color: var(--green); border: 1px solid rgba(0,255,65,0.3); }
+.ans-wrong   { background: rgba(255,0,60,0.12); color: var(--red); border: 1px solid rgba(255,0,60,0.3); }
+.ans-empty   { background: rgba(255,255,255,0.03); color: #1a4a1a; border: 1px solid rgba(0,50,0,0.5); font-style: italic; }
+
+.status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; }
+.dot-waiting { background: #1a3a1a; }
+.dot-current { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); animation: blink 1s ease infinite; }
+.dot-done    { background: var(--green); box-shadow: 0 0 6px var(--green); }
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+.score-cell { color: var(--cyan); }
+.empty-state { text-align: center; padding: 40px; color: #1a3a1a; font-size: 0.75rem; letter-spacing: 0.15em; }
+
+.live-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.6rem; color: var(--green); letter-spacing: 0.25em; }
+.live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 1s ease infinite; }
+#fb-status { font-size: 0.6rem; letter-spacing: 0.1em; color: #1a4a1a; }
+
+/* ── responsive ── */
+@media (max-width: 480px) {
+  .panel { padding: 60px 12px 32px; }
+  .cyber-card { padding: 20px 16px; }
+  .char-box { width: 30px; height: 38px; font-size: 10px; }
+  .answer-input-big { font-size: 1.2rem; min-height: 64px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Matrix Rain Canvas -->
+<canvas id="matrix-canvas"></canvas>
+
+<!-- Mode Switcher -->
+<div id="mode-switcher">
+  <button class="mode-btn active" id="btn-front" onclick="switchMode('front')">前台</button>
+  <button class="mode-btn" id="btn-admin" onclick="switchMode('admin')">後台</button>
+</div>
+
+<!-- ══ FRONT ══ -->
+<div id="front-view" class="panel">
+  <div class="hdr-level">LEVEL 03 · CHINESE MONSTER</div>
+  <div class="hdr-title">中文怪物</div>
+  <div class="hdr-sub">台灣廣告中文大挑戰</div>
+
+  <!-- Name -->
+  <div id="name-screen">
+    <div class="field-label">PLAYER IDENTIFICATION</div>
+    <input class="cyber-input" id="player-name-input" type="text" placeholder="輸入名字..." maxlength="10" autocomplete="off" />
+    <button class="cyber-btn" onclick="startGame()">▶ 進入系統</button>
+  </div>
+
+  <!-- Game -->
+  <div id="game-screen" style="display:none;flex-direction:column;align-items:center;width:100%;max-width:640px;animation:fadeUp 0.4s ease both">
+    <div class="player-greeting">PLAYER // <span class="pname" id="display-name"></span></div>
+
+    <div class="progress-bar-wrap" id="progress-bar"></div>
+    <div class="progress-labels" id="progress-labels" style="display:flex;gap:0;width:100%;max-width:640px;justify-content:space-around;margin-bottom:20px;"></div>
+
+    <div class="cyber-card" id="question-card">
+      <div class="card-corner tl"></div><div class="card-corner tr"></div>
+      <div class="card-corner bl"></div><div class="card-corner br"></div>
+
+      <div class="q-meta-row">
+        <div class="q-num" id="q-num-label">Q.01 / 05</div>
+        <div class="q-hint-badge" id="q-hint-badge">🎧 品牌</div>
+      </div>
+
+      <!-- Char boxes showing answer length -->
+      <div class="char-boxes-section">
+        <div class="char-boxes-label">ANSWER LENGTH</div>
+        <div class="char-boxes" id="char-boxes"></div>
+        <div class="char-count-display" id="char-count-display"></div>
+      </div>
+
+      <!-- Answer input -->
+      <div class="answer-section">
+        <div class="answer-label">INPUT ANSWER</div>
+        <input
+          class="answer-input-big"
+          id="answer-input"
+          type="text"
+          placeholder="在此輸入你的答案..."
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <div class="submit-wrap">
+        <button class="cyber-btn" id="submit-btn" onclick="submitAnswer()">確認送出 ▶</button>
+      </div>
+      <div class="feedback-msg" id="feedback-msg"></div>
+    </div>
+  </div>
+
+  <!-- Wait -->
+  <div id="wait-screen">
+    <div class="wait-icon">⬛</div>
+    <div class="wait-title">STANDBY</div>
+    <div class="wait-sub" id="wait-sub-text">等待主持人開放下一題...</div>
+  </div>
+</div>
+
+<!-- ══ ADMIN LOCK ══ -->
+<div id="admin-lock">
+  <div class="lock-icon">🔐</div>
+  <div class="lock-title">ADMIN AUTH REQUIRED</div>
+  <div class="lock-dots">
+    <div class="lock-dot" id="ld-0"></div>
+    <div class="lock-dot" id="ld-1"></div>
+    <div class="lock-dot" id="ld-2"></div>
+    <div class="lock-dot" id="ld-3"></div>
+  </div>
+  <div class="lock-numpad">
+    <button class="lock-key" onclick="lockKey('1')">1</button>
+    <button class="lock-key" onclick="lockKey('2')">2</button>
+    <button class="lock-key" onclick="lockKey('3')">3</button>
+    <button class="lock-key" onclick="lockKey('4')">4</button>
+    <button class="lock-key" onclick="lockKey('5')">5</button>
+    <button class="lock-key" onclick="lockKey('6')">6</button>
+    <button class="lock-key" onclick="lockKey('7')">7</button>
+    <button class="lock-key" onclick="lockKey('8')">8</button>
+    <button class="lock-key" onclick="lockKey('9')">9</button>
+    <button class="lock-key wide" onclick="lockKey('0')">0</button>
+    <button class="lock-key del" onclick="lockDel()">⌫</button>
+  </div>
+  <div class="lock-error-msg" id="lock-error"></div>
+</div>
+
+<!-- ══ ADMIN ══ -->
+<div id="admin-view">
+  <div class="admin-header">
+    <div>
+      <div class="admin-title">中文怪物 · 第三關 · 後台</div>
+      <div class="admin-subtitle">ADMIN PANEL — <span id="fb-status">⚡ 連線中...</span></div>
+    </div>
+    <div class="admin-controls">
+      <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+      <div class="q-nav">
+        <button class="nav-btn" id="prev-btn" onclick="adminPrev()">‹</button>
+        <span class="q-indicator" id="admin-q-indicator">1/5</span>
+        <button class="nav-btn" id="next-btn" onclick="adminNext()">›</button>
+      </div>
+      <button class="reset-all-btn" onclick="resetAll()">RESET</button>
+    </div>
+  </div>
+
+  <div class="admin-q-card">
+    <div class="admin-q-meta">CURRENT QUESTION PREVIEW</div>
+    <div class="admin-q-sentence" id="admin-q-display"></div>
+    <div class="admin-answer-row">ANS: <span id="admin-answers-display"></span></div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-val" id="stat-total">0</div><div class="stat-label">參賽者</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-answered">0</div><div class="stat-label">已答題</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-correct">0</div><div class="stat-label">全對</div></div>
+    <div class="stat-box"><div class="stat-val" id="stat-pending">0</div><div class="stat-label">等待中</div></div>
+  </div>
+
+  <div class="section-title">// PLAYER STATUS</div>
+  <table class="players-table">
+    <thead><tr><th>玩家</th><th>本題作答</th><th>狀態</th><th>分數</th></tr></thead>
+    <tbody id="players-tbody"><tr><td colspan="4" class="empty-state">NO PLAYERS CONNECTED</td></tr></tbody>
+  </table>
+</div>
+
+<script type="module">
+// ─────────────────────────────────────
+// 🔥 FIREBASE CONFIG — 貼你的設定在這裡
+// ─────────────────────────────────────
+const firebaseConfig = {
+    apiKey: "AIzaSyAwTAY-XJFW4qM85sjtiiUwNePA3WdgMd0",
+    authDomain: "chinese-monster3.firebaseapp.com",
+    databaseURL: "https://chinese-monster3-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "chinese-monster3",
+    storageBucket: "chinese-monster3.firebasestorage.app",
+    messagingSenderId: "849133740908",
+    appId: "1:849133740908:web:ae7b610d6e92e390900949",
+    measurementId: "G-CYFJNCKR1N"
+};
+
+// ─────────────────────────────────────
+// 題目資料 — 修改答案在這裡
+// ─────────────────────────────────────
+const QUESTIONS = [
+  { audio: "維骨力",   answer: "認明原場吃對才有效", hint: "🎧 品牌廣告" },
+  { audio: "馬爾濟斯", answer: "可爾必思是喝的",     hint: "🎧 品牌廣告" },
+  { audio: "幼幼台",   answer: "貓頭鷹低聲附和在呢喃", hint: "🎧 動物" },
+  { audio: "蠟筆小新", answer: "要回答好",           hint: "🎧 卡通" },
+  { audio: "全聯",     answer: "有了災情不離不棄",   hint: "🎧 超市廣告" }
+];
+
+// ─────────────────────────────────────
+// MATRIX RAIN
+// ─────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx = canvas.getContext('2d');
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ中文怪物廣告挑戰';
+
+  let cols, drops;
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const fontSize = window.innerWidth < 480 ? 12 : 14;
+    ctx.font = fontSize + 'px Share Tech Mono, monospace';
+    cols = Math.floor(canvas.width / fontSize);
+    drops = new Array(cols).fill(1);
+  }
+
+  function draw() {
+    ctx.fillStyle = 'rgba(0,10,0,0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const fontSize = window.innerWidth < 480 ? 12 : 14;
+    ctx.font = fontSize + 'px Share Tech Mono, monospace';
+
+    for (let i = 0; i < drops.length; i++) {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const bright = drops[i] * fontSize < 30 ? '#ffffff' : '#00ff41';
+      ctx.fillStyle = bright;
+      ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    }
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  setInterval(draw, 40);
+})();
+
+// ─────────────────────────────────────
+// STATE
+// ─────────────────────────────────────
+let db = null;
+let currentMode = 'front';
+let adminCurrentQ = 0;
+let players = {};
+let playerName = '';
+let frontCurrentQ = 0;
+let adminUnlocked = false;
+let lockInput = '';
+const ADMIN_PASSWORD = '0123';
+
+// ─────────────────────────────────────
+// 🔥 FIREBASE
+// ─────────────────────────────────────
+async function initFirebase() {
+  try {
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const { getDatabase, ref, set, onValue, update } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+    const app = initializeApp(FIREBASE_CONFIG);
+    db = getDatabase(app);
+    window._fb = { ref, set, onValue, update, db };
+
+    onValue(ref(db, 'game/currentQ'), snap => {
+      const val = snap.val();
+      if (val === null) return;
+      adminCurrentQ = val;
+      if (currentMode === 'front' && playerName) { frontCurrentQ = adminCurrentQ; showFrontQuestion(); }
+      if (currentMode === 'admin') refreshAdmin();
+    });
+    onValue(ref(db, 'players'), snap => {
+      players = snap.val() || {};
+      if (currentMode === 'admin') refreshAdmin();
+    });
+
+    setStatus('🔥 FIREBASE ONLINE', 'var(--green)');
+  } catch(e) {
+    console.warn('Firebase not configured, local mode', e);
+    setStatus('⚡ LOCAL MODE', 'var(--yellow)');
+    setInterval(() => {
+      if (currentMode === 'admin') refreshAdmin();
+      if (currentMode === 'front' && playerName && frontCurrentQ !== adminCurrentQ) {
+        if (players[playerName]?.answers?.[frontCurrentQ]?.submitted) {
+          frontCurrentQ = adminCurrentQ; showFrontQuestion();
+        }
+      }
+    }, 1000);
+  }
+}
+
+function setStatus(txt, col) {
+  const el = document.getElementById('fb-status');
+  el.textContent = txt; el.style.color = col;
+}
+
+async function fbSetGame(data) {
+  if (db) await window._fb.update(window._fb.ref(db, 'game'), data);
+}
+async function fbSetPlayer(name, data) {
+  if (db) await window._fb.set(window._fb.ref(db, `players/${name}`), data);
+  else players[name] = data;
+}
+
+// ─────────────────────────────────────
+// LOCK
+// ─────────────────────────────────────
+window.lockKey = d => {
+  if (lockInput.length >= 4) return;
+  lockInput += d; updateDots();
+  if (lockInput.length === 4) setTimeout(checkPwd, 150);
+};
+window.lockDel = () => {
+  lockInput = lockInput.slice(0,-1); updateDots();
+  document.getElementById('lock-error').textContent = '';
+};
+function updateDots(state) {
+  for (let i=0;i<4;i++) {
+    const d = document.getElementById(`ld-${i}`);
+    d.className = 'lock-dot';
+    if (state==='error') d.classList.add('error');
+    else if (i < lockInput.length) d.classList.add('filled');
+  }
+}
+function checkPwd() {
+  if (lockInput === ADMIN_PASSWORD) {
+    adminUnlocked = true;
+    document.getElementById('admin-lock').style.display = 'none';
+    document.getElementById('admin-view').style.display = 'block';
+    refreshAdmin();
+  } else {
+    updateDots('error');
+    document.getElementById('lock-error').textContent = 'ACCESS DENIED';
+    setTimeout(() => { lockInput=''; updateDots(); document.getElementById('lock-error').textContent=''; }, 800);
+  }
+}
+
+// ─────────────────────────────────────
+// MODE SWITCH
+// ─────────────────────────────────────
+window.switchMode = mode => {
+  currentMode = mode;
+  if (mode === 'admin' && !adminUnlocked) {
+    document.getElementById('front-view').style.display = 'none';
+    document.getElementById('admin-view').style.display = 'none';
+    document.getElementById('admin-lock').style.display = 'flex';
+    lockInput=''; updateDots();
+    document.getElementById('btn-front').classList.remove('active');
+    document.getElementById('btn-admin').classList.add('active');
+    return;
+  }
+  document.getElementById('admin-lock').style.display = 'none';
+  document.getElementById('front-view').style.display  = mode==='front' ? 'flex' : 'none';
+  document.getElementById('admin-view').style.display  = mode==='admin' ? 'block' : 'none';
+  document.getElementById('btn-front').classList.toggle('active', mode==='front');
+  document.getElementById('btn-admin').classList.toggle('active', mode==='admin');
+  if (mode === 'admin') refreshAdmin();
+};
+
+// ─────────────────────────────────────
+// FRONT — NAME
+// ─────────────────────────────────────
+document.getElementById('player-name-input').addEventListener('keydown', e => { if(e.key==='Enter') startGame(); });
+
+window.startGame = async () => {
+  const val = document.getElementById('player-name-input').value.trim();
+  if (!val) { document.getElementById('player-name-input').focus(); return; }
+  playerName = val;
+  if (!players[playerName]) {
+    const np = { answers:{}, score:0, currentQ:adminCurrentQ };
+    players[playerName] = np;
+    await fbSetPlayer(playerName, np);
+  }
+  document.getElementById('display-name').textContent = playerName;
+  document.getElementById('name-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'flex';
+  frontCurrentQ = adminCurrentQ;
+  showFrontQuestion();
+};
+
+// ─────────────────────────────────────
+// FRONT — PROGRESS
+// ─────────────────────────────────────
+function buildProgress() {
+  const bar = document.getElementById('progress-bar');
+  bar.innerHTML = '';
+  for (let i=0;i<QUESTIONS.length;i++) {
+    const seg = document.createElement('div');
+    seg.className = 'prog-seg';
+    const pd = players[playerName];
+    if (pd?.answers?.[i]?.submitted) seg.classList.add('done');
+    if (i === frontCurrentQ) seg.classList.add('current');
+    bar.appendChild(seg);
+  }
+}
+
+// ─────────────────────────────────────
+// FRONT — CHAR BOXES (answer length hint)
+// ─────────────────────────────────────
+function buildCharBoxes(qIdx) {
+  const answer = QUESTIONS[qIdx].answer;
+  const container = document.getElementById('char-boxes');
+  container.innerHTML = '';
+  [...answer].forEach((ch, i) => {
+    const box = document.createElement('div');
+    box.className = 'char-box';
+    box.dataset.idx = i;
+    container.appendChild(box);
+  });
+  document.getElementById('char-count-display').textContent = `共 ${answer.length} 個字`;
+}
+
+function updateCharBoxes(val) {
+  const boxes = document.querySelectorAll('.char-box');
+  boxes.forEach((box, i) => {
+    box.textContent = val[i] || '';
+    box.style.color = val[i] ? 'var(--green)' : 'var(--green-dim)';
+    box.style.textShadow = val[i] ? '0 0 8px var(--green)' : 'none';
+  });
+}
+
+// ─────────────────────────────────────
+// FRONT — SHOW QUESTION
+// ─────────────────────────────────────
+function showFrontQuestion() {
+  const gs = document.getElementById('game-screen');
+  const ws = document.getElementById('wait-screen');
+  const pd = players[playerName];
+  const alreadyDone = pd?.answers?.[frontCurrentQ]?.submitted;
+
+  if (frontCurrentQ !== adminCurrentQ && !alreadyDone) {
+    gs.style.display = 'none';
+    ws.style.display = 'flex';
+    document.getElementById('wait-sub-text').textContent = `等待主持人開放第 ${adminCurrentQ+1} 題`;
+    return;
+  }
+
+  gs.style.display = 'flex';
+  ws.style.display = 'none';
+
+  const q = QUESTIONS[frontCurrentQ];
+  document.getElementById('q-num-label').textContent = `Q.${String(frontCurrentQ+1).padStart(2,'0')} / 05`;
+  document.getElementById('q-hint-badge').textContent = q.hint;
+
+  buildCharBoxes(frontCurrentQ);
+  buildProgress();
+
+  const inp = document.getElementById('answer-input');
+  const btn = document.getElementById('submit-btn');
+  const fb  = document.getElementById('feedback-msg');
+
+  inp.value = '';
+  inp.className = 'answer-input-big';
+  fb.textContent = '';
+  fb.className = 'feedback-msg';
+
+  if (alreadyDone) {
+    const prev = pd.answers[frontCurrentQ];
+    inp.value = prev.userAnswer || '';
+    inp.disabled = true;
+    inp.classList.add(prev.allCorrect ? 'correct' : 'wrong');
+    btn.disabled = true;
+    fb.textContent = prev.allCorrect ? '✓ CORRECT — 答對了！' : '✗ WRONG — 答錯了';
+    fb.className = 'feedback-msg ' + (prev.allCorrect ? 'ok' : 'fail');
+    updateCharBoxes(inp.value);
+    if (prev.allCorrect) {
+      const ans = QUESTIONS[frontCurrentQ].answer;
+      [...ans].forEach((ch, i) => {
+        const box = document.querySelectorAll('.char-box')[i];
+        if (box) { box.textContent = ch; box.style.color = 'var(--green)'; }
+      });
+    }
+  } else {
+    inp.disabled = false;
+    btn.disabled = false;
+    inp.oninput = () => updateCharBoxes(inp.value);
+    setTimeout(() => inp.focus(), 100);
+  }
+}
+
+// ─────────────────────────────────────
+// FRONT — SUBMIT
+// ─────────────────────────────────────
+window.submitAnswer = async () => {
+  const q = QUESTIONS[frontCurrentQ];
+  const inp = document.getElementById('answer-input');
+  const userAnswer = inp.value.trim();
+  const allCorrect = userAnswer === q.answer;
+
+  inp.disabled = true;
+  inp.classList.add(allCorrect ? 'correct' : 'wrong');
+
+  const pd = players[playerName] || { answers:{}, score:0, currentQ:frontCurrentQ };
+  pd.answers = pd.answers || {};
+  pd.answers[frontCurrentQ] = { userAnswer, allCorrect, submitted:true };
+  if (allCorrect) pd.score = (pd.score||0) + 1;
+  pd.currentQ = frontCurrentQ;
+  players[playerName] = pd;
+  await fbSetPlayer(playerName, pd);
+
+  const fb = document.getElementById('feedback-msg');
+  fb.textContent = allCorrect ? '✓ CORRECT — 完全正確！' : '✗ WRONG — 繼續加油！';
+  fb.className = 'feedback-msg ' + (allCorrect ? 'ok' : 'fail');
+  document.getElementById('submit-btn').disabled = true;
+
+  if (allCorrect) {
+    const ans = q.answer;
+    [...ans].forEach((ch, i) => {
+      const box = document.querySelectorAll('.char-box')[i];
+      if (box) { box.textContent = ch; box.style.color = 'var(--green)'; box.style.textShadow = '0 0 8px var(--green)'; }
+    });
+  }
+
+  setTimeout(() => {
+    frontCurrentQ = adminCurrentQ;
+    const allDone = QUESTIONS.every((_,i) => players[playerName]?.answers?.[i]?.submitted);
+    if (allDone) {
+      document.getElementById('game-screen').innerHTML = `
+        <div style="text-align:center;animation:fadeUp 0.5s ease both;font-family:'Share Tech Mono',monospace">
+          <div style="font-size:3rem;margin-bottom:16px;filter:drop-shadow(0 0 16px #00ff41)">✦</div>
+          <div style="font-size:1.3rem;color:var(--green);letter-spacing:0.3em;text-shadow:0 0 12px var(--green);margin-bottom:10px">MISSION COMPLETE</div>
+          <div style="font-size:0.85rem;color:var(--green-dim);letter-spacing:0.2em">得分 ${players[playerName].score} / ${QUESTIONS.length}</div>
+        </div>`;
+      return;
+    }
+    showFrontQuestion();
+  }, 2000);
+};
+
+// ─────────────────────────────────────
+// ADMIN NAV
+// ─────────────────────────────────────
+window.adminNext = async () => {
+  if (adminCurrentQ < QUESTIONS.length-1) {
+    adminCurrentQ++;
+    await fbSetGame({ currentQ: adminCurrentQ });
+    refreshAdmin();
+    if (!db && currentMode==='front' && playerName) { frontCurrentQ=adminCurrentQ; showFrontQuestion(); }
+  }
+};
+window.adminPrev = async () => {
+  if (adminCurrentQ > 0) {
+    adminCurrentQ--;
+    await fbSetGame({ currentQ: adminCurrentQ });
+    refreshAdmin();
+  }
+};
+window.resetAll = async () => {
+  if (!confirm('確定要重設所有參賽者資料？')) return;
+  players={}; playerName=''; frontCurrentQ=0; adminCurrentQ=0;
+  if (db) {
+    await window._fb.set(window._fb.ref(db,'game'), { currentQ:0 });
+    await window._fb.set(window._fb.ref(db,'players'), null);
+  }
+  document.getElementById('name-screen').style.display='flex';
+  document.getElementById('game-screen').style.display='none';
+  document.getElementById('wait-screen').style.display='none';
+  document.getElementById('player-name-input').value='';
+  refreshAdmin();
+};
+
+// ─────────────────────────────────────
+// ADMIN REFRESH
+// ─────────────────────────────────────
+function refreshAdmin() {
+  const q = QUESTIONS[adminCurrentQ];
+  document.getElementById('admin-q-indicator').textContent = `${adminCurrentQ+1}/${QUESTIONS.length}`;
+  document.getElementById('prev-btn').disabled = adminCurrentQ===0;
+  document.getElementById('next-btn').disabled = adminCurrentQ===QUESTIONS.length-1;
+  document.getElementById('admin-q-display').innerHTML = `<span class="admin-blank">${q.answer}</span>`;
+  document.getElementById('admin-answers-display').textContent = q.answer;
+
+  const names = Object.keys(players);
+  let answered=0, correct=0;
+  names.forEach(n => {
+    if (players[n]?.answers?.[adminCurrentQ]?.submitted) {
+      answered++;
+      if (players[n].answers[adminCurrentQ].allCorrect) correct++;
+    }
+  });
+  document.getElementById('stat-total').textContent   = names.length;
+  document.getElementById('stat-answered').textContent = answered;
+  document.getElementById('stat-correct').textContent  = correct;
+  document.getElementById('stat-pending').textContent  = names.length - answered;
+
+  const tbody = document.getElementById('players-tbody');
+  if (!names.length) { tbody.innerHTML='<tr><td colspan="4" class="empty-state">NO PLAYERS CONNECTED</td></tr>'; return; }
+
+  tbody.innerHTML = names.map(name => {
+    const p = players[name];
+    const qd = p?.answers?.[adminCurrentQ];
+    let ansHTML = '<span class="ans-tag ans-empty">—</span>';
+    if (qd?.submitted) {
+      const correct = qd.allCorrect;
+      ansHTML = `<span class="ans-tag ${correct?'ans-correct':'ans-wrong'}">${qd.userAnswer||'（空）'}</span>`;
+    }
+    const stHTML = !qd?.submitted
+      ? (p.currentQ===adminCurrentQ ? `<span class="status-dot dot-current"></span>答題中` : `<span class="status-dot dot-waiting"></span>等待`)
+      : `<span class="status-dot dot-done"></span>${qd.allCorrect?'✓ 正確':'✗ 作答完'}`;
+    return `<tr class="player-row">
+      <td class="player-name-cell">${name}</td>
+      <td>${ansHTML}</td>
+      <td style="font-size:0.72rem">${stHTML}</td>
+      <td class="score-cell">${p.score||0}pt</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────
+// INIT
+// ─────────────────────────────────────
+refreshAdmin();
+initFirebase();
+</script>
+</body>
+</html>
